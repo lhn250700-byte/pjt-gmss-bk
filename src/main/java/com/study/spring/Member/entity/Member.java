@@ -1,13 +1,9 @@
+
 package com.study.spring.Member.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.util.ArrayList;
 
 import jakarta.persistence.Column;
@@ -35,6 +31,7 @@ public class Member {
 	@Id
 	@Column(name = "member_id") 
 	private String memberId; // email
+	@Column(name = "password")
 	private String pw;       // 비밀번호
 	private boolean social;
 	
@@ -50,17 +47,9 @@ public class Member {
 	private String mbti; 
 	private LocalDate birth; 
 	private String persona;
-	@Column(name="img_name")
-	private String imgName;
-	@Column(name="img_url")
-	private String imgUrl;	
-		
     // 상담사 전용 정보
     private String profile;
     private String text;
-    @JdbcTypeCode(SqlTypes.JSON)
-	@Column(name = "hash_tags", columnDefinition = "jsonb")
-	private Map<String, Object> hashTags;
 	private LocalDateTime updatedAt;
 	private LocalDateTime createdAt;
 	

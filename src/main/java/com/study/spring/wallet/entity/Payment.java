@@ -44,7 +44,7 @@ public class Payment {
 	private String status;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name="history_id", nullable = true)
+	@JoinColumn(name="history_id", nullable = false)
 	private PointHistory historyId;
 
 	@CreationTimestamp

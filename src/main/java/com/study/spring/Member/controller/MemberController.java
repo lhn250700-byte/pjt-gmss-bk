@@ -2,6 +2,7 @@ package com.study.spring.Member.controller;
 
 import com.study.spring.Member.dto.KakaoSignUpDto;
 import com.study.spring.Member.dto.MemberDto;
+import com.study.spring.Member.dto.MemberModifyDto;
 import com.study.spring.Member.dto.SignUpDto;
 import com.study.spring.Member.service.MemberService;
 import com.study.spring.util.JWTUtil;
@@ -38,10 +39,9 @@ public class MemberController {
 	}
 
 	@PatchMapping("/api/member/signup")
-	public ResponseEntity<?> completeKakaoSignup(
-			@AuthenticationPrincipal MemberDto principal,
+	public ResponseEntity<?> completeKakaoSignup(@AuthenticationPrincipal MemberDto principal,
 			@RequestBody KakaoSignUpDto kakaoSignUpDto) {
-		if(principal == null) {
+		if (principal == null) {
 			throw new IllegalStateException("인증되지 않은 사용자입니다.");
 		}
 
@@ -51,35 +51,28 @@ public class MemberController {
 	}
 
 	@GetMapping("/api/user/info")
-	public Map<String, Object> getUserInfo(
-			@AuthenticationPrincipal MemberDto principal,
-			Authentication authentication
-	) {
+	public Map<String, Object> getUserInfo(@AuthenticationPrincipal MemberDto principal,
+			Authentication authentication) {
 
-		if(principal == null) {
-			return Map.of("authentication",false,"message","인증되지 않은 사용자입니다.");
+		if (principal == null) {
+			return Map.of("authentication", false, "message", "인증되지 않은 사용자입니다.");
 		}
 
-		return Map.of(
-				"authentication",true,
-				"username",principal.getEmail(),
-				"authorities",authentication.getAuthorities(),
-				"message","jwt인증 통과 완료"
+		return Map.of("authentication", true, "username", principal.getEmail(), "authorities",
+				authentication.getAuthorities(), "message", "jwt인증 통과 완료"
 
 		);
 	}
 
 	@PostMapping("/api/auth/refresh")
 	public ResponseEntity<Map<String, Object>> refreshToken(
-			@CookieValue(value = "refreshToken", required = false) String refreshToken,
-			HttpServletResponse response) {
+			@CookieValue(value = "refreshToken", required = false) String refreshToken, HttpServletResponse response) {
 
 		try {
 			// 1) refreshToken 쿠키 확인
 			if (refreshToken == null || refreshToken.isEmpty()) {
 				log.warn("refreshToken 쿠키가 없습니다.");
-				return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-						.body(Map.of("error", "refreshToken이 없습니다."));
+				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "refreshToken이 없습니다."));
 			}
 
 			// 2) refreshToken 검증
@@ -88,8 +81,7 @@ public class MemberController {
 				claims = JWTUtil.validateToken(refreshToken);
 			} catch (Exception e) {
 				log.warn("refreshToken 검증 실패: {}", e.getMessage());
-				return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-						.body(Map.of("error", "유효하지 않은 refreshToken입니다."));
+				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "유효하지 않은 refreshToken입니다."));
 			}
 
 			// 3) 새로운 accessToken 생성
@@ -114,22 +106,17 @@ public class MemberController {
 			responseBody.put("social", claims.get("social"));
 			responseBody.put("roleNames", claims.get("roleNames"));
 
-
 			log.info("토큰 갱신 성공: email={}", claims.get("email"));
-			return ResponseEntity.ok()
-					.contentType(MediaType.APPLICATION_JSON)
-					.body(responseBody);
+			return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(responseBody);
 
 		} catch (Exception e) {
 			log.error("토큰 갱신 중 오류 발생", e);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(Map.of("error", "토큰 갱신 중 오류가 발생했습니다."));
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "토큰 갱신 중 오류가 발생했습니다."));
 		}
 	}
 
 	@PostMapping("/api/auth/signout")
-	public ResponseEntity<Map<String, Object>> logout(
-			@AuthenticationPrincipal MemberDto principal,
+	public ResponseEntity<Map<String, Object>> logout(@AuthenticationPrincipal MemberDto principal,
 			HttpServletResponse response) {
 
 		try {
@@ -149,21 +136,28 @@ public class MemberController {
 			log.info("로그아웃 성공: email={}", email);
 
 			// 3) 성공 응답 반환
-			return ResponseEntity.ok()
-					.contentType(MediaType.APPLICATION_JSON)
-					.body(Map.of(
-							"success", true,
-							"message", "로그아웃되었습니다."
-					));
+			return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+					.body(Map.of("success", true, "message", "로그아웃되었습니다."));
 
 		} catch (Exception e) {
 			log.error("로그아웃 중 오류 발생", e);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(Map.of(
-							"success", false,
-							"error", "로그아웃 중 오류가 발생했습니다."
-					));
+					.body(Map.of("success", false, "error", "로그아웃 중 오류가 발생했습니다."));
 		}
 	}
-
+	
+	// 마이페이지 회원정보 수정
+	@PatchMapping("/api/mypage/modify")
+	public ResponseEntity<String> memberModify(@AuthenticationPrincipal(expression = "username") String email,
+			@RequestBody MemberModifyDto modifydto) {
+		try {			
+			// 서비스 호출
+			memberService.modifyMember(email, modifydto);
+			return ResponseEntity.ok("회원 정보가 성공적으로 수정되었습니다.");
+		} catch (IllegalStateException e) {
+			return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("수정 중 오류가 발생했습니다.");
+		}
+	}
 }

@@ -14,116 +14,149 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class MemberService {
-    private final MemberInfoRepository memberInfoRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final MemberRepository memberRepository;
+	private final MemberInfoRepository memberInfoRepository;
+	private final PasswordEncoder passwordEncoder;
+	private final MemberRepository memberRepository;
 
-    @Transactional
-    public void register(SignUpDto request) {
-        Optional<MemberInfoEmailCheckDTO> checkResults = memberInfoRepository.memberInfoEmailCheckYn(request.getEmail());
-        Optional<MemberInfoNicknameCheckDTO> nicknameCheckResult = memberInfoRepository.memberInfoNicknameCheckYn(request.getNickname());
-        // [소셜 + 계정 존재]
-        checkResults.ifPresent(res -> {
-            if ("Y".equals(res.getUserInfoEmailCheckYn()) && res.getSocial()) {
-                throw new IllegalStateException(String.format(
-                        "소셜 로그인 충돌: 이메일 '%s'은 이미 기존 계정에 연결되어 있습니다.",
-                        request.getEmail()
-                ));
-            } // [계정 존재]
-            else if ("Y".equals(res.getUserInfoEmailCheckYn()) && !res.getSocial()) {
-                throw new IllegalStateException(String.format(
-                        "일반 회원 가입 충돌: 이메일 '%s'은 이미 사용 중입니다.",
-                        request.getEmail()
-                ));
-            }
-        });
+	@Transactional
+	public void register(SignUpDto request) {
+		Optional<MemberInfoEmailCheckDTO> checkResults = memberInfoRepository
+				.memberInfoEmailCheckYn(request.getEmail());
+		Optional<MemberInfoNicknameCheckDTO> nicknameCheckResult = memberInfoRepository
+				.memberInfoNicknameCheckYn(request.getNickname());
+		// [소셜 + 계정 존재]
+		checkResults.ifPresent(res -> {
+			if ("Y".equals(res.getUserInfoEmailCheckYn()) && res.getSocial()) {
+				throw new IllegalStateException(
+						String.format("소셜 로그인 충돌: 이메일 '%s'은 이미 기존 계정에 연결되어 있습니다.", request.getEmail()));
+			} // [계정 존재]
+			else if ("Y".equals(res.getUserInfoEmailCheckYn()) && !res.getSocial()) {
+				throw new IllegalStateException(
+						String.format("일반 회원 가입 충돌: 이메일 '%s'은 이미 사용 중입니다.", request.getEmail()));
+			}
+		});
 
-        // [닉네임 중복 체크]
-        nicknameCheckResult.ifPresent(res -> {
-            if ("Y".equals(res.getUserInfoNicknameCheckYn())) throw new IllegalStateException(String.format("닉네임 중복 : 닉네임 '%s'은(는) 이미 사용 중입니다.", request.getNickname()));
-        });
+		// [닉네임 중복 체크]
+		nicknameCheckResult.ifPresent(res -> {
+			if ("Y".equals(res.getUserInfoNicknameCheckYn()))
+				throw new IllegalStateException(
+						String.format("닉네임 중복 : 닉네임 '%s'은(는) 이미 사용 중입니다.", request.getNickname()));
+		});
 
-        String encode = passwordEncoder.encode(request.getPassword());
-        System.out.println("======================= EMAIL: =======================" + request.getEmail());
-        Member member = Member
-                .builder()
-                .memberId(request.getEmail())
-                .pw(encode)
-                .nickname(request.getNickname())
-                .social(request.isSocial())
-                .gender(request.getGender())
-                .mbti(request.getMbti())
-                .birth(request.getBirth())
-                .persona(request.getPersona())
-                .profile(request.getProfile())
-                .text(request.getText())
-                .build();
+		String encode = passwordEncoder.encode(request.getPassword());
 
-        member.addRole(MemberRole.USER);
-        memberRepository.save(member);
-    }
+		Member member = Member.builder().memberId(request.getEmail()).pw(encode).nickname(request.getNickname())
+				.social(request.isSocial()).gender(request.getGender()).mbti(request.getMbti())
+				.birth(request.getBirth()).persona(request.getPersona()).profile(request.getProfile())
+				.text(request.getText()).build();
 
-    @Transactional
-    public void kakaoRegister(String email, KakaoSignUpDto kakaoSignUpDto) {
-        Optional<Member> member = memberRepository.findByEmail(email);
-        Optional<MemberInfoNicknameCheckDTO> nicknameCheckResult = memberInfoRepository.memberInfoNicknameCheckYn(kakaoSignUpDto.getNickname());
+		member.addRole(MemberRole.USER);
+		memberRepository.save(member);
+	}
 
-        // [닉네임 중복 체크]
-        nicknameCheckResult.ifPresent(res -> {
-            if ("Y".equals(res.getUserInfoNicknameCheckYn())) throw new IllegalStateException(String.format("닉네임 중복 : 닉네임 '%s'은(는) 이미 사용 중입니다.", kakaoSignUpDto.getNickname()));
-        });
+	@Transactional
+	public void kakaoRegister(String email, KakaoSignUpDto kakaoSignUpDto) {
+		Optional<Member> member = memberRepository.findByEmail(email);
+		Optional<MemberInfoNicknameCheckDTO> nicknameCheckResult = memberInfoRepository
+				.memberInfoNicknameCheckYn(kakaoSignUpDto.getNickname());
 
-        if (member.isEmpty()) {
-            throw new IllegalArgumentException("회원이 존재하지 않습니다.");
-        }
+		// [닉네임 중복 체크]
+		nicknameCheckResult.ifPresent(res -> {
+			if ("Y".equals(res.getUserInfoNicknameCheckYn()))
+				throw new IllegalStateException(
+						String.format("닉네임 중복 : 닉네임 '%s'은(는) 이미 사용 중입니다.", kakaoSignUpDto.getNickname()));
+		});
 
-        if (kakaoSignUpDto.getNickname() != null) {
-            member.get().setNickname(kakaoSignUpDto.getNickname());
-        }
+		if (member.isEmpty()) {
+			throw new IllegalArgumentException("회원이 존재하지 않습니다.");
+		}
 
-        if (kakaoSignUpDto.getGender() != null) {
-            member.get().setGender(kakaoSignUpDto.getGender());
-        }
+		if (kakaoSignUpDto.getNickname() != null) {
+			member.get().setNickname(kakaoSignUpDto.getNickname());
+		}
 
-        if (kakaoSignUpDto.getMbti() != null) {
-            member.get().setMbti(kakaoSignUpDto.getMbti());
-        }
+		if (kakaoSignUpDto.getGender() != null) {
+			member.get().setGender(kakaoSignUpDto.getGender());
+		}
 
-        if (kakaoSignUpDto.getBirth() != null) {
-            member.get().setBirth(kakaoSignUpDto.getBirth());
-        }
+		if (kakaoSignUpDto.getMbti() != null) {
+			member.get().setMbti(kakaoSignUpDto.getMbti());
+		}
 
-        if (kakaoSignUpDto.getPersona() != null) {
-            member.get().setPersona(kakaoSignUpDto.getPersona());
-        }
+		if (kakaoSignUpDto.getBirth() != null) {
+			member.get().setBirth(kakaoSignUpDto.getBirth());
+		}
 
-        if (kakaoSignUpDto.getProfile() != null) {
-            member.get().setProfile(kakaoSignUpDto.getProfile());
-        }
+		if (kakaoSignUpDto.getPersona() != null) {
+			member.get().setPersona(kakaoSignUpDto.getPersona());
+		}
 
-        if (kakaoSignUpDto.getText() != null) {
-            member.get().setText(kakaoSignUpDto.getText());
-        }
-    }
+		if (kakaoSignUpDto.getProfile() != null) {
+			member.get().setProfile(kakaoSignUpDto.getProfile());
+		}
 
+		if (kakaoSignUpDto.getText() != null) {
+			member.get().setText(kakaoSignUpDto.getText());
+		}
+	}
 
-    /**
-     * 닉네임 중복 체크
-     * @return 중복이면 true, 사용 가능하면 false
-     */
-    @Transactional(readOnly = true)
-    public boolean isNicknameDuplicated(String nickname) {
-        return memberRepository.existsByNickname(nickname);
-    }
+	/**
+	 * 닉네임 중복 체크
+	 * 
+	 * @return 중복이면 true, 사용 가능하면 false
+	 */
+	@Transactional(readOnly = true)
+	public boolean isNicknameDuplicated(String nickname) {
+		return memberRepository.existsByNickname(nickname);
+	}
 
+	/**
+	 * email 중복 체크
+	 * 
+	 * @return 중복이면 true, 사용 가능하면 false
+	 */
+	@Transactional(readOnly = true)
+	public boolean isEmailDuplicated(String email) {
+		return false;
+	}
 
-    /**
-     * email 중복 체크
-     * @return 중복이면 true, 사용 가능하면 false
-     */
-    @Transactional(readOnly = true)
-    public boolean isEmailDuplicated(String email) {
-        return false;
-    }
+	// 회원정보 수정
+	@Transactional
+	public void modifyMember(String email, MemberModifyDto membermodifydto) {
+		Member member = memberRepository.findByEmail(email)
+				.orElseThrow(() -> new IllegalArgumentException("해당 회원을 찾을 수 없습니다. email : " + email));
 
+		// 에러 발생 지점: 아래에 정의한 메서드를 호출함
+		updateCommonInfo(member, membermodifydto);
+
+		// 역할별 분기 로직
+		boolean isCounselor = member.getMemberRoleList().contains(MemberRole.SYSTEM);
+		if (isCounselor) {
+			if (membermodifydto.getProfile() != null)
+				member.setProfile(membermodifydto.getProfile());
+			if (membermodifydto.getText() != null)
+				member.setText(membermodifydto.getText());
+		} else if (!member.getMemberRoleList().contains(MemberRole.ADMIN)) {
+			if (membermodifydto.getMbti() != null)
+				member.setMbti(membermodifydto.getMbti());
+			if (membermodifydto.getPersona() != null)
+				member.setPersona(membermodifydto.getPersona());
+		}
+	}
+
+	// 이 부분을 추가하면 에러가 사라집니다!
+	private void updateCommonInfo(Member member, MemberModifyDto dto) {
+		// 1. 닉네임 변경 체크
+		if (dto.getNickname() != null && !dto.getNickname().equals(member.getNickname())) {
+			if (memberRepository.existsByNickname(dto.getNickname())) {
+				throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
+			}
+			member.changeNickname(dto.getNickname());
+		}
+		// 2. 비밀번호 변경 체크
+		if (dto.getPw() != null && !dto.getPw().isEmpty()) {
+			String encodePw = passwordEncoder.encode(dto.getPw());
+			member.changePw(encodePw);
+		}
+	}
 }

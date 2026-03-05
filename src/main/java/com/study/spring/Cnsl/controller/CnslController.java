@@ -6,14 +6,15 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
+import com.study.spring.Cnsl.entity.Chat_Msg;
 import com.study.spring.Cnsl.entity.CounselingStatus;
 import com.study.spring.Cnsl.dto.*;
-import com.study.spring.Member.dto.MemberDto;
-import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.study.spring.Cnsl.repository.CnslRepository;
 import com.study.spring.Cnsl.service.CnslService;
 
 @RestController
@@ -34,7 +34,7 @@ public class CnslController {
 	@Autowired
 	CnslService cnslService;
 
-	@PostMapping("/api/cnslReg_create")
+	@PostMapping("/api/reserve")
 	public ResponseEntity<?> createCounselingReservation(@RequestBody CnslReqDto cnslReqDto) {
 		try {
 			Long id = cnslService.reserveCounseling(cnslReqDto);
@@ -45,7 +45,7 @@ public class CnslController {
 	}
 	
 	// 예약 벨리데이션 체크 [reserve 서비스 코드 내에 있긴 있음]
-	@GetMapping("/api/cnslReg_reservationDuplicateChk")
+	@GetMapping("/api/iscnslyn") 
 	public Optional<IsCnslDto> isCounseling(
 			@RequestParam("memberId") String memberId,
 			@RequestParam("cnslerId") String cnslerId,
@@ -56,7 +56,7 @@ public class CnslController {
 	}
 
 	// 상담사의 특정 일자 예약 리스트
-	@GetMapping("/api/cnslReg_availableTimeList")
+	@GetMapping("/api/cnslAvailability")
 	public List<CnslerDateDto> getAvailableSlots(
 			@RequestParam("cnslerId") String cnslerId,
 			@RequestParam("cnslDt") LocalDate cnslDt) {
@@ -64,7 +64,7 @@ public class CnslController {
 		return cnslService.getAvailableSlotsForCnsler(cnslerId, cnslDt);
 	}
 	
-	@PatchMapping("/api/cnslReg_update/{cnslId}")
+	@PatchMapping("/api/reserve/{cnslId}")
 	public ResponseEntity<?> updateMyCounseling(
             @PathVariable Long cnslId,
         @RequestBody CnslModiReqDto cnslModiReqDto
@@ -78,7 +78,7 @@ public class CnslController {
 		}
 	}
 	
-	@PutMapping("/api/cnslReg_cancel/{cnslId}")
+	@PutMapping("/api/cancel/{cnslId}")
 	public ResponseEntity<?> cancelMyCounseling(@PathVariable Long cnslId) {
 		try {
 			cnslService.removeMyCounseling(cnslId);
@@ -90,70 +90,38 @@ public class CnslController {
 	}
 
 	// [상담사 찾기]
-	// [상담사 리스트]
-	@GetMapping("/api/counselorList")
-	public ResponseEntity<Page<CounselorListDto>> getCounselorList(
-		@RequestParam(name="page", defaultValue = "0") int page,
-		@RequestParam(name="size", defaultValue = "10") int size
-	) {
-		Pageable pageable = PageRequest.of(page, size);
-		Page<CounselorListDto> counselorList = cnslService.getCounselorList(pageable);
-		return ResponseEntity.status(200).body(counselorList);
-	}
-	
-	// [상담사 뷰]
-	@GetMapping("/api/counselor/{memberId}")
-	public ResponseEntity<?> getCounselor(@PathVariable("memberId") String memberId) {
-		try {
-			return ResponseEntity.ok(cnslService.getCounselor(memberId));
-		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("counselor view failure: " + e.getMessage());
-		}
-	}
 
 	// =========== SYSTEM ===========
 	// [기간 내 상담 건수 : 상담 상태별]
-	@GetMapping("/api/cnslReg_statusStatistics")
+	@GetMapping("/api/consultations/status-statistics")
 	public ConsultationStatusCountDto getConsultationStatusCounts(@RequestParam("cnslerId") String cnslerId, @RequestParam("startDate") LocalDate startDate, @RequestParam("endDate") LocalDate endDate) {
 		return cnslService.findConsultationStatusCounts(cnslerId, startDate, endDate);
 	}
 
 	// [기간 내 상담 건수 : 카테고리별]
-	@GetMapping("/api/cnslReg_categoryStatistics")
+	@GetMapping("/api/consultations/category-statistics")
 	public List<ConsultationCategoryCountDto> getConsultationCategoryCounts(@RequestParam("cnslerId") String cnslerId, @RequestParam("startDate") LocalDate startDate, @RequestParam("endDate") LocalDate endDate) {
 		return cnslService.findConsultationCategoryCounts(cnslerId, startDate, endDate);
 	}
 
 	// [일자별 예약 및 완료 건수 추이]
-	@GetMapping("/api/cnslReg_dailyStatusStatistics")
+	@GetMapping("/api/consultations/status-statistics/daily")
 	public List<ConsultationStatusDailyDto> getDailyReservationCompletionTrend(@RequestParam("cnslerId") String cnslerId, @RequestParam("startDate") LocalDate startDate, @RequestParam("endDate") LocalDate endDate) {
 		return cnslService.findDailyReservationCompletionTrend(cnslerId, startDate, endDate);
 	}
 
 	// [선택 기간 내 수익, 최근 3달 수익]
-	@GetMapping("/api/cnslReg_revenueSummary")
+	@GetMapping("/api/consultations/revenue")
 	public List<MyRevenueSummaryDto> getMyRevenueSummary(@RequestParam("cnslerId") String cnslerId, @RequestParam("startDate") LocalDate startDate, @RequestParam("endDate") LocalDate endDate) {
 		return cnslService.findMyRevenueSummary(cnslerId, startDate, endDate);
 	}
 
 	// [가장 많은 상담 유형]
-	@GetMapping("/api/cnslReg_topTypeStatistics")
+	@GetMapping("/api/consultations/top-type")
 	public MostConsultedTypeDto getMostConsultedType(@RequestParam("cnslerId") String cnslerId, @RequestParam("startDate") LocalDate startDate, @RequestParam("endDate") LocalDate endDate) {
 		return cnslService.findMostConsultedType(cnslerId, startDate, endDate);
 	}
 
-	// [상담 뷰]
-	@GetMapping("/api/cnslReg_counsels/{cnslId}")
-	public ResponseEntity<?> getCounselDetail(@PathVariable("cnslId") Long cnslId, @AuthenticationPrincipal MemberDto principal) {
-		try {
-			System.out.println("컨트롤러 진입");
-
-			System.out.println("principal = " + principal);
-			return ResponseEntity.ok(cnslService.getCounselDetail(cnslId, principal.getEmail()));
-		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("get counselDetail failure: " + e.getMessage());
-		}
-	}
 
 
 //	// [상담사 월별 상담 건수]
@@ -168,60 +136,43 @@ public class CnslController {
 //		return cnslService.findCounselingTotalCountByCounselor(cnslerId);
 //	}
 //
-	
-	// [전체 상담 내역]
-	@GetMapping("/api/cnslReg_allList/{cnslerId}")
-	public ResponseEntity<Page<cnslListDto>> getMyCounselingAllList(
-			@RequestParam(name="page", defaultValue = "0") int page,
-			@RequestParam(name="size", defaultValue = "5") int size,
-            @PathVariable("cnslerId") String cnslerId
-	) {
-		Pageable pageable = PageRequest.of(page, size);
-
-		Page<cnslListDto> cnslPage = cnslService.findAllCounselingsByCounselor(pageable, cnslerId);
-		if (cnslPage.isEmpty()) {
-			return ResponseEntity.noContent().build();
-		}
-		return ResponseEntity.ok(cnslPage);
-	}
-	
-	// [상담 상태에 따른 상담 내역(전체)]
-	@GetMapping("/api/cnslReg_statusList/{cnslerId}")
-	public ResponseEntity<Page<cnslListDto>> getMyCounselingList(
-			@RequestParam(name="status", required = false) CounselingStatus status,
-			@RequestParam(name="page", defaultValue = "0") int page,
-			@RequestParam(name="size", defaultValue = "10") int size,
-			@PathVariable("cnslerId") String cnslerId
-	) {
-		Pageable pageable = PageRequest.of(page, size);
-
-		Page<cnslListDto> cnslPage = cnslService.findCounselingsByCounselor(status, pageable, cnslerId);
-		if (cnslPage.isEmpty()) {
-			return ResponseEntity.noContent().build();
-		}
-		return ResponseEntity.ok(cnslPage);
-	}
-
-
-	// [상담 예약 관리(수락 전)]
-	@GetMapping("/api/cnslReg_pendingReservationList/{cnslerId}")
-	public ResponseEntity<Page<cnslListWithoutStatusDto>> getPendingReservationList(
-			@RequestParam(name="page", defaultValue = "0") int page,
-			@RequestParam(name="size", defaultValue = "10") int size,
-			@PathVariable("cnslerId") String cnslerId
-	) {
-		Pageable pageable = PageRequest.of(page, size);
-
-		Page<cnslListWithoutStatusDto> rsvPage = cnslService.findPendingReservations(pageable, cnslerId);
-		if (rsvPage.isEmpty()) {
-			return ResponseEntity.noContent().build();
-		}
-		return ResponseEntity.ok(rsvPage);
-	}
+//	// [상담 내역(전체) 조건 없음]
+//	@GetMapping("/api/cnslList/{cnslerId}")
+//	public ResponseEntity<Page<cnslListDto>> getMyCounselingList(
+//			@RequestParam(name="status", required = false) CounselingStatus status,
+//			@RequestParam(name="page", defaultValue = "0") int page,
+//			@RequestParam(name="size", defaultValue = "10") int size,
+//            @PathVariable String cnslerId
+//	) {
+//		Pageable pageable = PageRequest.of(page, size);
+//
+//		Page<cnslListDto> cnslPage = cnslService.findCounselingsByCounselor(status, pageable, cnslerId);
+//		if (cnslPage.isEmpty()) {
+//			return ResponseEntity.noContent().build();
+//		}
+//		return ResponseEntity.ok(cnslPage);
+//	}
+//
+//
+//	// [상담 예약 관리(수락 전)]
+//	@GetMapping("/api/cnslRsvList/{cnslerId}")
+//	public ResponseEntity<Page<cnslListWithoutStatusDto>> getPendingReservationList(
+//			@RequestParam(name="page", defaultValue = "0") int page,
+//			@RequestParam(name="size", defaultValue = "10") int size,
+//            @PathVariable String cnslerId
+//	) {
+//		Pageable pageable = PageRequest.of(page, size);
+//
+//		Page<cnslListWithoutStatusDto> rsvPage = cnslService.findPendingReservations(pageable, cnslerId);
+//		if (rsvPage.isEmpty()) {
+//			return ResponseEntity.noContent().build();
+//		}
+//		return ResponseEntity.ok(rsvPage);
+//	}
 
 	// [상담 수락]
-	@PostMapping("/api/cnslReg_approve/{cnslId}")
-	public ResponseEntity<?> approveConsultation(@PathVariable("cnslId") Long cnslId, @RequestBody cnslRespMessageDto message) {
+	@PostMapping("/api/approve/{cnslId}")
+	public ResponseEntity<?> approveConsultation(@PathVariable Long cnslId, @RequestBody cnslRespMessageDto message) {
 		try {
 			cnslService.approveConsultation(cnslId, message.getMessage());
 			return ResponseEntity.ok().build();
@@ -231,8 +182,8 @@ public class CnslController {
 	}
 
 	// [상담 거절]
-	@PostMapping("/api/cnslReg_reject/{cnslId}")
-	public ResponseEntity<?> rejectConsultation(@PathVariable("cnslId") Long cnslId, @RequestBody cnslRespMessageDto message) {
+	@PostMapping("/api/reject/{cnslId}")
+	public ResponseEntity<?> rejectConsultation(@PathVariable Long cnslId, @RequestBody cnslRespMessageDto message) {
 		try {
 			cnslService.rejectConsultation(cnslId, message.getMessage());
 			return ResponseEntity.ok().build();
@@ -243,36 +194,59 @@ public class CnslController {
 
 	// =========== ADMIN ===========
 	// [기간 내 상담 건수 및 수익 : 카테고리별]
-	@GetMapping("/api/cnslReg_categoryRevenueStatistics")
+	@GetMapping("/api/consultations/statistics/category-revenue")
 	public List<CategoryRevenueStatisticsDto> getCategoryRevenueStatistics(@RequestParam("startDate") LocalDate startDate, @RequestParam("endDate") LocalDate endDate) {
 		return cnslService.findCategoryRevenueStatistics(startDate, endDate);
 	}
 
 	// [기간 내 상담 건수 및 수익 : 상담 유형별]
-	@GetMapping("/api/cnslReg_typeRevenueStatistics")
+	@GetMapping("/api/consultations/statistics/type-revenue")
 	public List<CategoryRevenueStatisticsDto> getTypeRevenueStatistics(@RequestParam("startDate") LocalDate startDate, @RequestParam("endDate") LocalDate endDate) {
 		return cnslService.findTypeRevenueStatistics(startDate, endDate);
 	}
 
 	// [실시간 위험 감지 및 조치 현황]
-	@GetMapping("/api/bbsRisk_realtimeList")
+	@GetMapping("/api/risk-detections/realtime")
 	public List<RealtimeRiskDetectionStatusDto> getRealtimeRiskDetectionStatus() {
 		return cnslService.findRealtimeRiskDetectionStatus();
 	}
 
 	// [정산현황 : 일자별전체 상담사 내역 관련 집계 (최근일, 상담매출액순)]
-	@GetMapping("/api/cnslReg_latestRevenue")
-	public ResponseEntity<Page<CounselorRevenueLatestlyDto>> getLatestlyCounselorRevenue(
-			@RequestParam(name="page", defaultValue = "0") int page,
-			@RequestParam(name="size", defaultValue = "5") int size) {
-		Pageable pageable = PageRequest.of(page, size);
-
-		Page<CounselorRevenueLatestlyDto> revenuePage = cnslService.findLatestlyCounselorRevenue(pageable);
-		if (revenuePage.isEmpty()) {
-			return ResponseEntity.noContent().build();
-		}
-		return ResponseEntity.ok(revenuePage);
+	@GetMapping("/api/consultations/revenue/latestly")
+	public List<CounselorRevenueLatestlyDto> getLatestlyCounselorRevenue() {
+		return cnslService.findLatestlyCounselorRevenue();
 	}
 	
+	// 마이페이지 상담내역-상담사
+	@GetMapping("/api/mypage/cnsllist")
+	public ResponseEntity<Page<MyCnslListDto>> getmycnsllist(
+			@AuthenticationPrincipal String memberId,
+			@PageableDefault(size =10, sort = "created_at", direction= Sort.Direction.DESC)
+			Pageable pageable){
+		Page<MyCnslListDto> list = cnslService.findmycnsllist(memberId, pageable);
+		return ResponseEntity.ok(list);
+	}
 	
+	// 마이페이지 상담내역-상담사 상세
+	@GetMapping("/api/mypage/cnsllist/{cnslId}")
+	public ResponseEntity<CnslDetailDto> getcnslDetail(
+			@AuthenticationPrincipal String memberId,
+			@PathVariable("cnslId") Long cnslId){
+		return cnslService.findcnslDetail(cnslId, memberId)
+				.map(ResponseEntity::ok)
+				.orElse(ResponseEntity.notFound().build());
+	}
+	
+	// 마이페이지 - 상담사와의 상담 채팅
+//	@PostMapping("/api/mypage/cnslchat/{cnslId}")
+//	public ResponseEntity<ChatDto> cnslChat(
+//			@PathVariable("cnslId") Integer cnslId,
+//			@AuthenticationPrincipal String memberId,
+//			@RequestBody ChatDto chatDto){
+//		chatDto.setCnslId(cnslId);
+//		
+//		ChatDto saveMsg = cnslService.saveMessage(chatDto, memberId);
+//		
+//		return ResponseEntity.ok(saveMsg);			
+//	}
 }
